@@ -5,49 +5,18 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"time"
 )
 
 type todo struct {
 	description string
 }
 
-func render(l *[]todo, selected *int) {
-	if len(*l) > 0 {
-		for index, item := range *l {
-			if index == *selected {
-				fmt.Print("\u2714")
-				fmt.Print("   ")
-			} else {
-				fmt.Print("    ")
-			}
-
-			fmt.Print(item.description)
-
-			fmt.Println()
-		}
-	} else {
-		fmt.Println("Nothing to show...")
-	}
-
-	fmt.Println()
+func clear() {
+	fmt.Print("\033[H\033[2J")
 }
 
 func main() {
-	ch := make(chan byte)
-	go func(ch chan byte) {
-		// disable input buffering
-		exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
-		// do not display entered characters on the screen
-		exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
-
-		for {
-			buffer := bufio.NewReaderSize(os.Stdin, 1)
-			input, _ := buffer.ReadByte()
-			ch <- input
-		}
-	}(ch)
-
+	option := byte(0)
 	selected := 0
 	list := []todo{
 		{
@@ -62,44 +31,65 @@ func main() {
 	}
 
 	for {
-		select {
-		case stdin, _ := <-ch:
-			switch stdin {
-			case 10:
-				list = append(list[:selected], list[selected+1:]...)
-				selected = 0
-			case 27:
-				// fmt.Println("ESC pressed")
-			case 106:
-				if selected < len(list)-1 {
-					selected++
-				}
-			case 107:
-				if selected > 0 {
-					selected--
-				}
-			case 110:
-				for {
-					exec.Command("stty", "-F", "/dev/tty", "echo").Run()
-					reader := bufio.NewReader(os.Stdin)
-					fmt.Print("Write the description of the new task:")
-					text, _ := reader.ReadString('\n')
-					list = append(list, todo{description: text})
-					break
-				}
+		clear()
+
+		switch option {
+		case 10:
+			list = append(list[:selected], list[selected+1:]...)
+			selected = 0
+		case 27:
+			os.Exit(0)
+		case 106:
+			if selected < len(list)-1 {
+				selected++
+			}
+		case 107:
+			if selected > 0 {
+				selected--
+			}
+		case 110:
+			// enable input buffering and restore the echoing state when exiting
+			exec.Command("stty", "-F", "/dev/tty", "sane").Run()
+			exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+
+			fmt.Print("Task description: ")
+			buffer := bufio.NewReader(os.Stdin)
+			text, _ := buffer.ReadString('\n')
+
+			if len(text) > 1 {
+				list = append(list, todo{description: text})
 			}
 
-			render(&list, &selected)
-
-		default:
-			render(&list, &selected)
+			clear()
 		}
 
+		if len(list) > 0 {
+			for index, item := range list {
+				if index == selected {
+					fmt.Print("\u2714\ufe0f")
+					fmt.Print("   ")
+				} else {
+					fmt.Print("    ")
+				}
+
+				fmt.Println(item.description)
+			}
+		} else {
+			fmt.Println("Nothing to do, go take a \U0001f37a")
+		}
+
+		fmt.Println()
 		fmt.Println("Press N to add new task")
 		fmt.Println("Press J or K to move the marker down or up")
 		fmt.Println("Press ENTER to complete the marked task")
-		fmt.Println("Press ESC or Ctrl-C to exit this program")
-		time.Sleep(time.Millisecond * 100)
-		fmt.Print("\033[H\033[2J")
+		fmt.Println("Press ESC or CTRL-C to exit this program")
+
+		// disable input buffering and do not display entered characters on the screen
+		exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
+		exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+
+		buffer := bufio.NewReaderSize(os.Stdin, 1)
+		input, _ := buffer.ReadByte()
+		option = input
 	}
 }
