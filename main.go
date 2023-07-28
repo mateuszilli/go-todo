@@ -2,33 +2,56 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
+	"strings"
 )
 
-type todo struct {
-	description string
+type Todo struct {
+	Description string `json:"description"`
 }
 
 func clear() {
 	fmt.Print("\033[H\033[2J")
 }
 
-func main() {
-	option := byte(0)
-	selected := 0
-	list := []todo{
-		{
-			description: "Read articles in english",
-		},
-		{
-			description: "Practice english conversation in Omegle",
-		},
-		{
-			description: "Listen podcasts or watch videos in english",
-		},
+func toJSON(t *[]Todo) {
+	bytes, err_parse := json.Marshal(t)
+	if err_parse != nil {
+		log.Fatal("Error on parse JSON", err_parse)
 	}
+
+	err_file := ioutil.WriteFile("todo.json", bytes, 0644)
+	if err_file != nil {
+		log.Fatal("Error on write JSON file", err_file)
+	}
+}
+
+func fromJSON() []Todo {
+	bytes, err_file := ioutil.ReadFile("./todo.json")
+	if err_file != nil {
+		log.Fatal("Error on read JSON file", err_file)
+	}
+
+	var list []Todo
+	err_parse := json.Unmarshal(bytes, &list)
+	if err_parse != nil {
+		log.Fatal("Error on parse JSON", err_parse)
+	}
+
+	return list
+}
+
+func main() {
+	page := 1
+	limit := 10
+	selected := 0
+	option := byte(0)
+	list := fromJSON()
 
 	for {
 		clear()
@@ -37,15 +60,22 @@ func main() {
 		case 10:
 			list = append(list[:selected], list[selected+1:]...)
 			selected = 0
+			toJSON(&list)
 		case 27:
 			os.Exit(0)
 		case 106:
-			if selected < len(list)-1 {
+			if selected < (page*limit)-1 && selected < len(list)-1 {
 				selected++
+			} else if (page * limit) < len(list) {
+				page++
+				selected = (page - 1) * limit
 			}
 		case 107:
-			if selected > 0 {
+			if selected > (page-1)*limit {
 				selected--
+			} else if page > 1 {
+				page--
+				selected = (page - 1) * limit
 			}
 		case 110:
 			// enable input buffering and restore the echoing state when exiting
@@ -54,25 +84,45 @@ func main() {
 
 			fmt.Print("Task description: ")
 			buffer := bufio.NewReader(os.Stdin)
-			text, _ := buffer.ReadString('\n')
+			read, _ := buffer.ReadString('\n')
+			text := strings.TrimSuffix(read, "\n")
 
-			if len(text) > 1 {
-				list = append(list, todo{description: text})
+			if text != "" {
+				list = append(list, Todo{Description: text})
+				toJSON(&list)
 			}
 
 			clear()
 		}
 
 		if len(list) > 0 {
-			for index, item := range list {
-				if index == selected {
+			if page > 1 {
+				fmt.Print("\u2b06\ufe0f")
+				fmt.Print("   ")
+				fmt.Println("Back to page", page-1)
+				// fmt.Print("    ")
+				fmt.Println()
+			}
+			for i := (page - 1) * limit; i < page*limit && i < len(list); i++ {
+				item := list[i]
+
+				if i == selected {
 					fmt.Print("\u2714\ufe0f")
 					fmt.Print("   ")
 				} else {
 					fmt.Print("    ")
 				}
 
-				fmt.Println(item.description)
+				fmt.Println(item.Description)
+
+			}
+			if page*limit < len(list) {
+				// fmt.Print("    ")
+				fmt.Println()
+				fmt.Print("\u2b07\ufe0f")
+				fmt.Print("   ")
+				fmt.Println("Go to page", page+1)
+
 			}
 		} else {
 			fmt.Println("Nothing to do, go take a \U0001f37a")
