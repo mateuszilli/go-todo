@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -25,14 +24,14 @@ func toJSON(t *[]Todo) {
 		log.Fatal("Error on parse JSON", err_parse)
 	}
 
-	err_file := ioutil.WriteFile("todo.json", bytes, 0644)
+	err_file := os.WriteFile("todo.json", bytes, 0644)
 	if err_file != nil {
 		log.Fatal("Error on write JSON file", err_file)
 	}
 }
 
 func fromJSON() []Todo {
-	bytes, err_file := ioutil.ReadFile("./todo.json")
+	bytes, err_file := os.ReadFile("todo.json")
 	if err_file != nil {
 		log.Fatal("Error on read JSON file", err_file)
 	}
@@ -47,8 +46,6 @@ func fromJSON() []Todo {
 }
 
 func main() {
-	page := 1
-	limit := 10
 	selected := 0
 	option := byte(0)
 	list := fromJSON()
@@ -58,24 +55,21 @@ func main() {
 
 		switch option {
 		case 10:
-			list = append(list[:selected], list[selected+1:]...)
-			selected = 0
-			toJSON(&list)
+			if selected < len(list) {
+				list = append(list[:selected], list[selected+1:]...)
+				selected = 0
+
+				toJSON(&list)
+			}
 		case 27:
 			os.Exit(0)
 		case 106:
-			if selected < (page*limit)-1 && selected < len(list)-1 {
+			if selected < len(list)-1 {
 				selected++
-			} else if (page * limit) < len(list) {
-				page++
-				selected = (page - 1) * limit
 			}
 		case 107:
-			if selected > (page-1)*limit {
+			if selected > 0 {
 				selected--
-			} else if page > 1 {
-				page--
-				selected = (page - 1) * limit
 			}
 		case 110:
 			// enable input buffering and restore the echoing state when exiting
@@ -89,6 +83,7 @@ func main() {
 
 			if text != "" {
 				list = append(list, Todo{Description: text})
+
 				toJSON(&list)
 			}
 
@@ -96,16 +91,7 @@ func main() {
 		}
 
 		if len(list) > 0 {
-			if page > 1 {
-				fmt.Print("\u2b06\ufe0f")
-				fmt.Print("   ")
-				fmt.Println("Back to page", page-1)
-				// fmt.Print("    ")
-				fmt.Println()
-			}
-			for i := (page - 1) * limit; i < page*limit && i < len(list); i++ {
-				item := list[i]
-
+			for i, item := range list {
 				if i == selected {
 					fmt.Print("\u2714\ufe0f")
 					fmt.Print("   ")
@@ -114,15 +100,6 @@ func main() {
 				}
 
 				fmt.Println(item.Description)
-
-			}
-			if page*limit < len(list) {
-				// fmt.Print("    ")
-				fmt.Println()
-				fmt.Print("\u2b07\ufe0f")
-				fmt.Print("   ")
-				fmt.Println("Go to page", page+1)
-
 			}
 		} else {
 			fmt.Println("Nothing to do, go take a \U0001f37a")
