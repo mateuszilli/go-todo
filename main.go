@@ -31,15 +31,14 @@ func toJSON(t *[]Todo) {
 }
 
 func fromJSON() []Todo {
-	bytes, err_file := os.ReadFile("todo.json")
-	if err_file != nil {
-		log.Fatal("Error on read JSON file", err_file)
-	}
-
 	var list []Todo
-	err_parse := json.Unmarshal(bytes, &list)
-	if err_parse != nil {
-		log.Fatal("Error on parse JSON", err_parse)
+
+	bytes, err_file := os.ReadFile("todo.json")
+	if err_file == nil {
+		err_parse := json.Unmarshal(bytes, &list)
+		if err_parse != nil {
+			log.Fatal("Error on parse JSON", err_parse)
+		}
 	}
 
 	return list
