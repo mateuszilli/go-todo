@@ -1,11 +1,15 @@
 # go-todo
 
-A lightweight CLI tool to add your to-dos and keep track of them quick and easy.
-
-<a href="https://www.buymeacoffee.com/mateuszilli"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 220px !important;"></a>
+A lightweight CLI tool to add your to-dos and keep track of them quickly and easily.
 
 ## Installation
+
+Build the application
 ```
 make build
-ln -sf /usr/local/todo/todo /usr/bin/todo
+```
+
+Set your PATH
+```
+export PATH=$PATH:/place/with/the/binary
 ```
