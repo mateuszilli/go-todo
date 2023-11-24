@@ -1,4 +1,4 @@
-# go-todo
+# todo-go
 
 A lightweight CLI tool to add your to-dos and keep track of them quickly and easily.
 
